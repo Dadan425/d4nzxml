@@ -1,0 +1,45 @@
+name: Build Pico UF2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # bisa trigger manual dari GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Install ARM toolchain
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y \
+          cmake ninja-build \
+          gcc-arm-none-eabi \
+          libnewlib-arm-none-eabi \
+          libstdc++-arm-none-eabi-newlib
+
+    - name: Clone Pico SDK
+      run: |
+        git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git ~/pico-sdk
+        cd ~/pico-sdk && git submodule update --init --depth 1
+
+    - name: CMake Configure
+      run: |
+        mkdir build && cd build
+        cmake .. -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DPICO_SDK_PATH=$HOME/pico-sdk
+
+    - name: Build
+      run: cd build && ninja -j$(nproc)
+
+    - name: Upload UF2
+      uses: actions/upload-artifact@v4
+      with:
+        name: JGC_Syscon_Reader_UF2
+        path: build/JGC_Syscon_Reader.uf2
+        retention-days: 30
